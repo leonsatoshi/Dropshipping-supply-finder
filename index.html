@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dropshipping Supplier Finder - AI Powered</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, -apple-system, sans-serif; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { animation: spin 1s linear infinite; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div id="app" class="max-w-6xl mx-auto p-6"></div>
+
+    <script>
+        const API_ENDPOINT = 'https://api.anthropic.com/v1/messages';
+        const MODEL = 'claude-sonnet-4-20250514';
+
+        let state = {
+            apiKey: '',
+            showApiInput: true,
+            productQuery: '',
+            loading: false,
+            suppliers: [],
+            analyzed: false
+        };
+
+        function setState(updates) {
+            state = { ...state, ...updates };
+            render();
+        }
+
+        function createIcon(paths, filled = false) {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '24');
+            svg.setAttribute('height', '24');
+            svg.setAttribute('viewBox', '0 0 24 24');
+            svg.setAttribute('fill', filled ? 'currentColor' : 'none');
+            svg.setAttribute('stroke', 'currentColor');
+            svg.setAttribute('stroke-width', '2');
+            svg.setAttribute('stroke-linecap', 'round');
+            svg.setAttribute('stroke-linejoin', 'round');
+            
+            paths.forEach(pathData => {
+                const path = document.createElementNS('http://www.w3.org/2000/svg', pathData.tag || 'path');
+                Object.keys(pathData).forEach(key => {
+                    if (key !== 'tag') path.setAttribute(key, pathData[key]);
+                });
+                svg.appendChild(path);
+            });
+            
+            return svg;
+        }
+
+        const icons = {
+            search: () => createIcon([
+                { tag: 'circle', cx: '11', cy: '11', r: '8' },
+                { d: 'm21 21-4.3-4.3' }
+            ]),
+            package: () => createIcon([
+                { d: 'm7.5 4.27 9 5.15' },
+                { d: 'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z' },
+                { d: 'm3.3 7 8.7 5 8.7-5' },
+                { d: 'M12 22V12' }
+            ]),
+            dollar: () => createIcon([
+                { tag: 'line', x1: '12', x2: '12', y1: '2', y2: '22' },
+                { d: 'M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' }
+            ]),
+            trending: () => createIcon([
+                { tag: 'polyline', points: '22 7 13.5 15.5 8.5 10.5 2 17' },
+                { tag: 'polyline', points: '16 7 22 7 22 13' }
+            ]),
+            map: () => createIcon([
+                { d: 'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z' },
+                { tag: 'circle', cx: '12', cy: '10', r: '3' }
+            ]),
+            star: () => createIcon([
+                { tag: 'polygon', points: '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2' }
+            ], true),
+            link: () => createIcon([
+                { d: 'M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6' },
+                { tag: 'polyline', points: '15 3 21 3 21 9' },
+                { tag: 'line', x1: '10', x2: '21', y1: '14', y2: '3' }
+            ]),
+            loader: () => createIcon([{ d: 'M21 12a9 9 0 1 1-6.219-8.56' }])
+        };
+
+        async function findSuppliers() {
+            if (!state.productQuery.trim() || !state.apiKey.trim()) {
+                alert('Please enter both API key and product category');
+                return;
+            }
+
+            setState({ loading: true, analyzed: false });
+
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': state.apiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model: MODEL,
+                        max_tokens: 1000,
+                        messages: [{
+                            role: 'user',
+                            content: `You are a dropshipping expert. Analyze the product category "${state.productQuery}" and recommend 5 reliable suppliers.
+
+For each supplier, provide:
+- name: Supplier name
+- platform: Platform type (e.g., "Wholesale Marketplace", "Direct Manufacturer", "Print on Demand")
+- location: Primary location/country
+- minOrder: Minimum order requirement (use "None" if no minimum)
+- shippingTime: Typical shipping time
+- priceRange: Price competitiveness (Low/Medium/High)
+- integration: Shopify integration availability (Yes/Partial/No)
+- rating: Quality rating out of 5
+- specialty: What they specialize in
+- pros: 2-3 key advantages
+- cons: 1-2 potential drawbacks
+
+Respond ONLY with valid JSON in this exact format, no other text:
+{
+  "suppliers": [
+    {
+      "name": "string",
+      "platform": "string",
+      "location": "string",
+      "minOrder": "string",
+      "shippingTime": "string",
+      "priceRange": "string",
+      "integration": "string",
+      "rating": number,
+      "specialty": "string",
+      "pros": ["string", "string"],
+      "cons": ["string"]
+    }
+  ]
+}`
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    alert('API Error: ' + data.error.message);
+                    setState({ loading: false });
+                    return;
+                }
+
+                const textContent = data.content.filter(item => item.type === 'text').map(item => item.text).join('');
+                const cleanJson = textContent.replace(/```json|```/g, '').trim();
+                const parsed = JSON.parse(cleanJson);
+
+                setState({ suppliers: parsed.suppliers || [], analyzed: true, loading: false });
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error: ' + error.message);
+                setState({ loading: false, suppliers: [] });
+            }
+        }
+
+        function el(tag, attrs = {}, ...children) {
+            const element = document.createElement(tag);
+            Object.entries(attrs).forEach(([key, value]) => {
+                if (key === 'className') element.className = value;
+                else if (key === 'onclick') element.onclick = value;
+                else if (key === 'oninput') element.oninput = value;
+                else if (key === 'onkeypress') element.onkeypress = value;
+                else if (key.startsWith('data-')) element.setAttribute(key, value);
+                else element[key] = value;
+            });
+            children.flat().forEach(child => {
+                if (child) {
+                    element.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+                }
+            });
+            return element;
+        }
+
+        function renderHeader() {
+            const icon = icons.package();
+            icon.className = 'w-10 h-10 text-indigo-600';
+            
+            return el('div', { className: 'text-center mb-8' },
+                el('div', { className: 'flex items-center justify-center gap-3 mb-3' },
+                    icon,
+                    el('h1', { className: 'text-4xl font-bold text-gray-800' }, 'Dropshipping Supplier Finder')
+                ),
+                el('p', { className: 'text-gray-600 text-lg' }, 'AI-powered supplier recommendations for your Shopify store')
+            );
+        }
+
+        function renderApiKeySection() {
+            if (!state.showApiInput) {
+                return el('div', { className: 'bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-center justify-between' },
+                    el('p', { className: 'text-green-800 text-sm' }, '✓ API Key Saved'),
+                    el('button', {
+                        className: 'text-sm text-indigo-600 hover:underline',
+                        onclick: () => setState({ showApiInput: true })
+                    }, 'Change API Key')
+                );
+            }
+
+            return el('div', { className: 'bg-yellow-50 border border-yellow-200 rounded-xl p-6 mb-6' },
+                el('h3', { className: 'font-semibold text-gray-800 mb-2' }, '🔑 Enter Your Anthropic API Key'),
+                el('p', { className: 'text-sm text-gray-600 mb-3' },
+                    'Get your API key from ',
+                    el('a', { href: 'https://console.anthropic.com/', target: '_blank', className: 'text-indigo-600 underline' }, 'console.anthropic.com')
+                ),
+                el('div', { className: 'flex gap-3' },
+                    el('input', {
+                        type: 'password',
+                        value: state.apiKey,
+                        placeholder: 'sk-ant-...',
+                        className: 'flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent',
+                        oninput: (e) => setState({ apiKey: e.target.value })
+                    }),
+                    el('button', {
+                        className: 'px-6 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors',
+                        disabled: !state.apiKey.trim(),
+                        onclick: () => setState({ showApiInput: false })
+                    }, 'Save')
+                )
+            );
+        }
+
+        function renderSearchSection() {
+            const searchIcon = icons.search();
+            searchIcon.className = 'absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5';
+
+            const buttonIcon = state.loading ? icons.loader() : icons.search();
+            buttonIcon.className = state.loading ? 'w-5 h-5 spinner' : 'w-5 h-5';
+
+            return el('div', { className: 'bg-white rounded-xl shadow-lg p-6 mb-8' },
+                el('label', { className: 'block text-sm font-semibold text-gray-700 mb-2' }, 'What products are you looking to sell?'),
+                el('div', { className: 'flex gap-3' },
+                    el('div', { className: 'flex-1 relative' },
+                        searchIcon,
+                        el('input', {
+                            type: 'text',
+                            value: state.productQuery,
+                            placeholder: 'e.g., wireless earbuds, fitness apparel, home decor...',
+                            className: 'w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent',
+                            oninput: (e) => setState({ productQuery: e.target.value }),
+                            onkeypress: (e) => { if (e.key === 'Enter') findSuppliers(); }
+                        })
+                    ),
+                    el('button', {
+                        className: 'px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2',
+                        disabled: state.loading || !state.productQuery.trim(),
+                        onclick: findSuppliers
+                    },
+                        buttonIcon,
+                        state.loading ? 'Searching...' : 'Find Suppliers'
+                    )
+                )
+            );
+        }
+
+        function renderSupplierCard(supplier, index) {
+            const starIcon = icons.star();
+            starIcon.className = 'w-4 h-4 text-yellow-500 fill-yellow-500';
+
+            const mapIcon = icons.map();
+            mapIcon.className = 'w-4 h-4 text-gray-400';
+
+            const packageIcon = icons.package();
+            packageIcon.className = 'w-4 h-4 text-gray-400';
+
+            const trendingIcon = icons.trending();
+            trendingIcon.className = 'w-4 h-4 text-gray-400';
+
+            const dollarIcon = icons.dollar();
+            dollarIcon.className = 'w-4 h-4 text-gray-400';
+
+            const linkIcon = icons.link();
+            linkIcon.className = 'w-4 h-4 text-gray-400';
+
+            const integrationColor = supplier.integration === 'Yes' ? 'text-green-600' : 
+                                     supplier.integration === 'Partial' ? 'text-yellow-600' : 'text-gray-600';
+
+            return el('div', { className: 'bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow' },
+                el('div', { className: 'flex items-start justify-between mb-4' },
+                    el('div', { className: 'flex-1' },
+                        el('h3', { className: 'text-xl font-bold text-gray-800 mb-1' }, supplier.name),
+                        el('p', { className: 'text-indigo-600 font-medium' }, supplier.platform)
+                    ),
+                    el('div', { className: 'flex items-center gap-1 bg-yellow-50 px-3 py-1 rounded-full' },
+                        starIcon,
+                        el('span', { className: 'font-semibold text-gray-700' }, supplier.rating + '/5')
+                    )
+                ),
+                el('p', { className: 'text-gray-600 mb-4 italic' }, supplier.specialty),
+                el('div', { className: 'grid grid-cols-2 md:grid-cols-4 gap-4 mb-4' },
+                    el('div', { className: 'flex items-center gap-2' },
+                        mapIcon,
+                        el('div', {},
+                            el('p', { className: 'text-xs text-gray-500' }, 'Location'),
+                            el('p', { className: 'text-sm font-medium text-gray-700' }, supplier.location)
+                        )
+                    ),
+                    el('div', { className: 'flex items-center gap-2' },
+                        packageIcon,
+                        el('div', {},
+                            el('p', { className: 'text-xs text-gray-500' }, 'Min Order'),
+                            el('p', { className: 'text-sm font-medium text-gray-700' }, supplier.minOrder)
+                        )
+                    ),
+                    el('div', { className: 'flex items-center gap-2' },
+                        trendingIcon,
+                        el('div', {},
+                            el('p', { className: 'text-xs text-gray-500' }, 'Shipping Time'),
+                            el('p', { className: 'text-sm font-medium text-gray-700' }, supplier.shippingTime)
+                        )
+                    ),
+                    el('div', { className: 'flex items-center gap-2' },
+                        dollarIcon,
+                        el('div', {},
+                            el('p', { className: 'text-xs text-gray-500' }, 'Price Range'),
+                            el('p', { className: 'text-sm font-medium text-gray-700' }, supplier.priceRange)
+                        )
+                    )
+                ),
+                el('div', { className: 'flex items-center gap-2 mb-4' },
+                    linkIcon,
+                    el('span', { className: 'text-sm text-gray-500' }, 'Shopify Integration:'),
+                    el('span', { className: 'text-sm font-semibold ' + integrationColor }, supplier.integration)
+                ),
+                el('div', { className: 'grid md:grid-cols-2 gap-4' },
+                    el('div', {},
+                        el('h4', { className: 'font-semibold text-green-700 mb-2' }, '✓ Pros'),
+                        el('ul', { className: 'space-y-1' },
+                            ...supplier.pros.map(pro => el('li', { className: 'text-sm text-gray-600' }, '• ' + pro))
+                        )
+                    ),
+                    el('div', {},
+                        el('h4', { className: 'font-semibold text-red-700 mb-2' }, '✗ Cons'),
+                        el('ul', { className: 'space-y-1' },
+                            ...supplier.cons.map(con => el('li', { className: 'text-sm text-gray-600' }, '• ' + con))
+                        )
+                    )
+                )
+            );
+        }
+
+        function renderResults() {
+            if (!state.analyzed) return null;
+
+            if (state.suppliers.length === 0) {
+                return el('div', { className: 'bg-white rounded-xl shadow-md p-8 text-center' },
+                    el('p', { className: 'text-gray-600' }, 'No suppliers found. Try a different product category.')
+                );
+            }
+
+            return el('div', { className: 'space-y-4' },
+                el('h2', { className: 'text-2xl font-bold text-gray-800 mb-4' },
+                    'Recommended Suppliers for "' + state.productQuery + '"'
+                ),
+                ...state.suppliers.map((supplier, index) => renderSupplierCard(supplier, index))
+            );
+        }
+
+        function render() {
+            const app = document.getElementById('app');
+            app.innerHTML = '';
+            app.appendChild(
+                el('div', {},
+                    renderHeader(),
+                    renderApiKeySection(),
+                    renderSearchSection(),
+                    renderResults()
+                )
+            );
+        }
+
+        render();
+    </script>
+</body>
+</html>
