@@ -121,39 +121,20 @@
             }
 
             try {
-                const prompt = `You are a dropshipping expert. Analyze the product category "${state.productQuery}" and recommend 5 reliable suppliers.
+                const prompt = `You are a dropshipping supplier database. Return ONLY valid JSON, no other text.
 
-For each supplier, provide:
-- name: Supplier name
-- platform: Platform type (e.g., "Wholesale Marketplace", "Direct Manufacturer", "Print on Demand")
-- location: Primary location/country
-- minOrder: Minimum order requirement (use "None" if no minimum)
-- shippingTime: Typical shipping time
-- priceRange: Price competitiveness (Low/Medium/High)
-- integration: Shopify integration availability (Yes/Partial/No)
-- rating: Quality rating out of 5
-- specialty: What they specialize in
-- pros: 2-3 key advantages
-- cons: 1-2 potential drawbacks
+Product category: ${state.productQuery}
 
-Respond ONLY with valid JSON in this exact format, no other text or markdown:
-{
-  "suppliers": [
-    {
-      "name": "string",
-      "platform": "string",
-      "location": "string",
-      "minOrder": "string",
-      "shippingTime": "string",
-      "priceRange": "string",
-      "integration": "string",
-      "rating": number,
-      "specialty": "string",
-      "pros": ["string", "string"],
-      "cons": ["string"]
-    }
-  ]
-}`;
+Return exactly 5 suppliers in this JSON format:
+{"suppliers":[{"name":"AliExpress","platform":"Marketplace","location":"China","minOrder":"None","shippingTime":"15-30 days","priceRange":"Low","integration":"Yes","rating":4,"specialty":"Wide variety of products","pros":["Low prices","Huge selection"],"cons":["Long shipping times"]},{"name":"Supplier 2","platform":"Type","location":"Country","minOrder":"None","shippingTime":"X days","priceRange":"Low","integration":"Yes","rating":4,"specialty":"Description","pros":["Pro 1","Pro 2"],"cons":["Con 1"]}]}
+
+Rules:
+- Return ONLY the JSON object
+- No markdown formatting
+- No code blocks
+- No explanations
+- All strings must use straight double quotes
+- No line breaks inside strings`;
 
                 const response = await fetch(`${API_ENDPOINT}?key=${state.apiKey}`, {
                     method: 'POST',
