@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -16,7 +16,7 @@
     <div id="app" class="max-w-6xl mx-auto p-6"></div>
 
     <script>
-        const API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent';
+        const API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
 
         let state = {
             apiKey: '',
@@ -95,6 +95,21 @@
             }
 
             setState({ loading: true, analyzed: false });
+
+            // First, let's check what models are available
+            try {
+                const listResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${state.apiKey}`);
+                const listData = await listResponse.json();
+                console.log('Available models:', listData);
+                
+                if (listData.error) {
+                    alert('API Key Error: ' + listData.error.message + '\n\nMake sure you created your key at: https://aistudio.google.com/app/apikey');
+                    setState({ loading: false });
+                    return;
+                }
+            } catch (e) {
+                console.error('Error listing models:', e);
+            }
 
             try {
                 const prompt = `You are a dropshipping expert. Analyze the product category "${state.productQuery}" and recommend 5 reliable suppliers.
