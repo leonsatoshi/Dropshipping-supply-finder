@@ -125,7 +125,7 @@
 
 Product category: ${state.productQuery}
 
-Return exactly 5 suppliers in this JSON format:
+Return exactly 20 suppliers in this JSON format:
 {"suppliers":[{"name":"AliExpress","platform":"Marketplace","location":"China","minOrder":"None","shippingTime":"15-30 days","priceRange":"Low","integration":"Yes","rating":4,"specialty":"Wide variety of products","pros":["Low prices","Huge selection"],"cons":["Long shipping times"]},{"name":"Supplier 2","platform":"Type","location":"Country","minOrder":"None","shippingTime":"X days","priceRange":"Low","integration":"Yes","rating":4,"specialty":"Description","pros":["Pro 1","Pro 2"],"cons":["Con 1"]}]}
 
 Rules:
@@ -134,7 +134,8 @@ Rules:
 - No code blocks
 - No explanations
 - All strings must use straight double quotes
-- No line breaks inside strings`;
+- No line breaks inside strings
+- Include 20 different suppliers with diverse platforms and locations`;
 
                 const response = await fetch(`${API_ENDPOINT}?key=${state.apiKey}`, {
                     method: 'POST',
@@ -149,7 +150,7 @@ Rules:
                         }],
                         generationConfig: {
                             temperature: 0.7,
-                            maxOutputTokens: 2048
+                            maxOutputTokens: 8192
                         }
                     })
                 });
