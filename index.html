@@ -16,7 +16,7 @@
     <div id="app" class="max-w-6xl mx-auto p-6"></div>
 
     <script>
-        const API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
+        const API_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
         let state = {
             apiKey: '',
@@ -106,6 +106,15 @@
                     alert('API Key Error: ' + listData.error.message + '\n\nMake sure you created your key at: https://aistudio.google.com/app/apikey');
                     setState({ loading: false });
                     return;
+                }
+                
+                // Filter models that support generateContent
+                if (listData.models) {
+                    const generateModels = listData.models.filter(model => 
+                        model.supportedGenerationMethods && 
+                        model.supportedGenerationMethods.includes('generateContent')
+                    );
+                    console.log('Models that support generateContent:', generateModels.map(m => m.name));
                 }
             } catch (e) {
                 console.error('Error listing models:', e);
