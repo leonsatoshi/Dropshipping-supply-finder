@@ -202,9 +202,27 @@ Respond ONLY with valid JSON in this exact format, no other text or markdown:
                     cleanJson = jsonMatch[0];
                 }
                 
+                // Fix common JSON issues
+                cleanJson = cleanJson
+                    .replace(/,\s*]/g, ']')  // Remove trailing commas in arrays
+                    .replace(/,\s*}/g, '}')  // Remove trailing commas in objects
+                    .replace(/\n/g, ' ')     // Remove newlines that might break strings
+                    .replace(/\\/g, '\\\\')  // Escape backslashes
+                    .replace(/"/g, '"')      // Fix smart quotes
+                    .replace(/"/g, '"');     // Fix smart quotes
+                
                 console.log('Cleaned JSON:', cleanJson);
                 
-                const parsed = JSON.parse(cleanJson);
+                let parsed;
+                try {
+                    parsed = JSON.parse(cleanJson);
+                } catch (parseError) {
+                    console.error('JSON Parse Error:', parseError);
+                    console.log('Failed JSON string:', cleanJson);
+                    alert('The AI returned invalid data. Please try again with a different product search.');
+                    setState({ loading: false });
+                    return;
+                }
 
                 setState({ suppliers: parsed.suppliers || [], analyzed: true, loading: false });
             } catch (error) {
