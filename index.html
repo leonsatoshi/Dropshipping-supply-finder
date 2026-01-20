@@ -29,15 +29,7 @@
 
         function setState(updates) {
             state = { ...state, ...updates };
-            if (updates.productQuery === undefined) {
-                render();
-            } else {
-                // Only update the input value, don't re-render entire page
-                const input = document.querySelector('input[type="text"]');
-                if (input && input !== document.activeElement) {
-                    input.value = state.productQuery;
-                }
-            }
+            render();
         }
 
         function createIcon(paths, filled = false) {
@@ -221,9 +213,7 @@ Respond ONLY with valid JSON in this exact format, no other text or markdown:
                     el('p', { className: 'text-green-800 text-sm' }, '✓ API Key Saved'),
                     el('button', {
                         className: 'text-sm text-indigo-600 hover:underline',
-                        onclick: () => {
-                            setState({ showApiInput: true });
-                        }
+                        onclick: () => setState({ showApiInput: true })
                     }, 'Change API Key')
                 );
             }
@@ -239,18 +229,25 @@ Respond ONLY with valid JSON in this exact format, no other text or markdown:
                     el('input', {
                         type: 'password',
                         value: state.apiKey,
+                        id: 'api-key-input',
                         placeholder: 'AIza...',
                         className: 'flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent',
                         oninput: (e) => {
-                            state.apiKey = e.target.value;
+                            const cursorPos = e.target.selectionStart;
+                            setState({ apiKey: e.target.value });
+                            setTimeout(() => {
+                                const input = document.getElementById('api-key-input');
+                                if (input) {
+                                    input.focus();
+                                    input.setSelectionRange(cursorPos, cursorPos);
+                                }
+                            }, 0);
                         }
                     }),
                     el('button', {
                         className: 'px-6 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors',
                         disabled: !state.apiKey.trim(),
-                        onclick: () => {
-                            setState({ showApiInput: false });
-                        }
+                        onclick: () => setState({ showApiInput: false })
                     }, 'Save')
                 )
             );
@@ -271,10 +268,19 @@ Respond ONLY with valid JSON in this exact format, no other text or markdown:
                         el('input', {
                             type: 'text',
                             value: state.productQuery,
+                            id: 'product-input',
                             placeholder: 'e.g., wireless earbuds, fitness apparel, home decor...',
                             className: 'w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent',
                             oninput: (e) => {
-                                state.productQuery = e.target.value;
+                                const cursorPos = e.target.selectionStart;
+                                setState({ productQuery: e.target.value });
+                                setTimeout(() => {
+                                    const input = document.getElementById('product-input');
+                                    if (input) {
+                                        input.focus();
+                                        input.setSelectionRange(cursorPos, cursorPos);
+                                    }
+                                }, 0);
                             },
                             onkeypress: (e) => { if (e.key === 'Enter') findSuppliers(); }
                         })
