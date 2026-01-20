@@ -29,7 +29,15 @@
 
         function setState(updates) {
             state = { ...state, ...updates };
-            render();
+            if (updates.productQuery === undefined) {
+                render();
+            } else {
+                // Only update the input value, don't re-render entire page
+                const input = document.querySelector('input[type="text"]');
+                if (input && input !== document.activeElement) {
+                    input.value = state.productQuery;
+                }
+            }
         }
 
         function createIcon(paths, filled = false) {
@@ -213,7 +221,9 @@ Respond ONLY with valid JSON in this exact format, no other text or markdown:
                     el('p', { className: 'text-green-800 text-sm' }, '✓ API Key Saved'),
                     el('button', {
                         className: 'text-sm text-indigo-600 hover:underline',
-                        onclick: () => setState({ showApiInput: true })
+                        onclick: () => {
+                            setState({ showApiInput: true });
+                        }
                     }, 'Change API Key')
                 );
             }
@@ -231,12 +241,16 @@ Respond ONLY with valid JSON in this exact format, no other text or markdown:
                         value: state.apiKey,
                         placeholder: 'AIza...',
                         className: 'flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent',
-                        oninput: (e) => setState({ apiKey: e.target.value })
+                        oninput: (e) => {
+                            state.apiKey = e.target.value;
+                        }
                     }),
                     el('button', {
                         className: 'px-6 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors',
                         disabled: !state.apiKey.trim(),
-                        onclick: () => setState({ showApiInput: false })
+                        onclick: () => {
+                            setState({ showApiInput: false });
+                        }
                     }, 'Save')
                 )
             );
@@ -259,7 +273,9 @@ Respond ONLY with valid JSON in this exact format, no other text or markdown:
                             value: state.productQuery,
                             placeholder: 'e.g., wireless earbuds, fitness apparel, home decor...',
                             className: 'w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent',
-                            oninput: (e) => setState({ productQuery: e.target.value }),
+                            oninput: (e) => {
+                                state.productQuery = e.target.value;
+                            },
                             onkeypress: (e) => { if (e.key === 'Enter') findSuppliers(); }
                         })
                     ),
